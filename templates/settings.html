@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Settings</h1>
+
+<form method="post" action="/settings" class="card">
+  <label>Show live WPM</label>
+  <select name="live_wpm">
+    <option value="1" {% if prefs.live_wpm == 1 %}selected{% endif %}>On</option>
+    <option value="0" {% if prefs.live_wpm == 0 %}selected{% endif %}>Off</option>
+  </select>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

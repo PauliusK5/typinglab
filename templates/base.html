@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ title if title else "TypingLab" }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body class="dark">
+    <header class="topbar">
+      <div class="brand"><a href="/">TypingLab</a></div>
+      {% if not auth_page %}
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/training">Training</a>
+        <a href="/test">Ranked Typing</a>
+        <a href="/leaderboard">Leaderboard</a>
+        <details class="user-menu">
+          <summary class="user-name">{{ user_name if user_name else "User" }}</summary>
+          <div class="user-pop">
+            <a href="/settings">Settings</a>
+            <form action="/logout" method="post">
+              <button type="submit" class="linkbtn">Log out</button>
+            </form>
+          </div>
+        </details>
+      </nav>
+      {% endif %}
+    </header>
+
+
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+
+  </body>
+</html>

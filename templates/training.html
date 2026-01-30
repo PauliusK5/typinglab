@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Training</h1>
+<div class="training-progress">
+  <div class="progress-card">
+    <div class="progress-ring" id="trainingProgressRing" style="--progress: 0;">
+      <span id="trainingProgressValue">0%</span>
+    </div>
+    <div class="progress-text">
+      Trainings completed
+    </div>
+  </div>
+</div>
+<div class="training-grid">
+  <a class="training-card" href="/training/easy" data-training-id="easy">
+    <span>Easy Mode</span>
+    <span class="training-percent" id="trainingEasyPercent">0%</span>
+  </a>
+  <a class="training-card" href="/training/advanced" data-training-id="advanced">
+    <span>Medium Mode</span>
+    <span class="training-percent" id="trainingAdvancedPercent">0%</span>
+  </a>
+  <a class="training-card" href="/training/hard" data-training-id="hard">
+    <span>Hard Mode</span>
+    <span class="training-percent" id="trainingHardPercent">0%</span>
+  </a>
+</div>
+<script src="/static/training.js"></script>
+{% endblock %}

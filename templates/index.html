@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+{% if show_home %}
+  <div class="hero">
+    <h1 class="hero-title">Typing Lab</h1>
+  </div>
+  <div class="card minimal-card">
+    <div id="homeTimer" class="home-timer hidden">
+      <span id="timeLeft">{{ duration_seconds }}</span>s
+    </div>
+    <div class="duration-bar">
+      <select id="durationSelect" aria-label="Duration">
+        <option value="15">15s</option>
+        <option value="30">30s</option>
+        <option value="60">60s</option>
+        <option value="120">120s</option>
+      </select>
+    </div>
+    <div class="typebox typing-vars typebox--home" id="homeTypebox">
+      <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+      <textarea id="input" rows="3"></textarea>
+    </div>
+    <div id="result" class="result hidden">
+      <div class="result-grid">
+        <canvas id="wpmChart" width="520" height="220"></canvas>
+        <div class="result-stats">
+          <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
+            <span id="wpmValue">0</span>
+            <div class="wpm-label">WPM</div>
+          </div>
+          <div class="accuracy-card">
+            <div class="accuracy-value" id="accValue">0%</div>
+            <div class="accuracy-label">Accuracy</div>
+          </div>
+        </div>
+      </div>
+      <button id="restartHome">Restart</button>
+    </div>
+    <div class="home-progress">
+      <div class="home-progress-title">Your progress</div>
+      <div class="home-progress-grid">
+        <a class="progress-card progress-card--square" href="/training">
+          <div class="progress-ring" id="homeTrainingProgressRing" style="--progress: 0;">
+            <span class="progress-value" id="homeTrainingProgressValue">0%</span>
+          </div>
+          <div class="progress-text">Training completed</div>
+        </a>
+        <div class="progress-card progress-card--square">
+          <div class="progress-ring progress-ring--plain">
+            <span class="progress-value">{{ "%.1f"|format(top_wpm) if top_wpm is not none else "—" }}</span>
+          </div>
+          <div class="progress-text">Best WPM</div>
+        </div>
+        <div class="progress-card progress-card--square">
+          <div class="progress-ring progress-ring--plain progress-ring--elo">
+            <span class="progress-elo">{{ user_rating if user_rating is not none else 1500 }}</span>
+          </div>
+          <div class="progress-text">Current ELO</div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <h1>Ranked Typing</h1>
+  <div class="card">
+    <p class="small">Duration: <b id="duration">{{ duration_seconds }}</b>s</p>
+
+    <div id="testTypebox">
+      <div class="duration-bar">
+        <select id="durationSelectTest" aria-label="Duration">
+          <option value="15">15s</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
+      <div class="typebox typing-vars typebox--test">
+        <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+        <textarea id="input" rows="4"></textarea>
+      </div>
+
+      <div class="row">
+        <div class="stat">Time: <span id="timeLeft">{{ duration_seconds }}</span>s</div>
+        <div class="stat">WPM: <span id="wpm">0</span></div>
+        <div class="stat">Accuracy: <span id="acc">0</span>%</div>
+      </div>
+    </div>
+
+    <p class="small muted" id="status"></p>
+
+    <div id="result" class="result hidden">
+      <div class="result-grid">
+        <canvas id="wpmChart" width="520" height="220"></canvas>
+        <div class="result-stats">
+          <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
+            <span id="wpmValue">0</span>
+            <div class="wpm-label">WPM</div>
+          </div>
+          <div class="accuracy-card">
+            <div class="accuracy-value" id="accValue">0%</div>
+            <div class="accuracy-label">Accuracy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="restart">Restart</button>
+      <a class="btn" href="/leaderboard">View leaderboard</a>
+    </div>
+  </div>
+{% endif %}
+
+{% if ranked %}
+  <div class="card reward-card">
+    <h2>Current ELO</h2>
+    <div class="elo-value" id="eloValue">{{ user_rating if user_rating is not none else 1500 }}</div>
+    <div class="elo-delta" id="eloDelta"></div>
+  </div>
+{% endif %}
+
+<script id="typing-config" type="application/json">
+  {{ {
+    "durationSeconds": duration_seconds,
+    "promptText": prompt_text,
+    "promptId": prompt_id,
+    "liveWpm": live_wpm,
+    "ranked": ranked
+  } | tojson }}
+</script>
+<script src="/static/app.js"></script>
+{% endblock %}

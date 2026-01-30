@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero">
+  <h1 class="hero-title">Typing Lab</h1>
+  <p class="hero-sub">Welcome back {{ user_name if user_name else "User" }}</p>
+</div>
+<div class="chart-wrap">
+  <canvas id="wpmChart"></canvas>
+</div>
+{% endblock %}

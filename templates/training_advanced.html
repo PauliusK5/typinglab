@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Medium Mode</h1>
+
+<div class="card">
+  <div class="training-levels">
+    <button class="training-level" data-level="1">Level 1</button>
+    <button class="training-level" data-level="2" data-locked="1">Level 2</button>
+    <button class="training-level" data-level="3" data-locked="1">Level 3</button>
+  </div>
+  <p class="small muted" id="trainingStatus">Pick a level to start.</p>
+</div>
+
+<div class="card hidden" id="trainingBox">
+  <p class="small">Duration: <b id="duration">30</b>s</p>
+  <div id="trainingTypebox">
+    <div class="typebox typing-vars typebox--test">
+      <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+      <textarea id="input" rows="4"></textarea>
+    </div>
+    <div class="row">
+      <div class="stat">Time: <span id="timeLeft">30</span>s</div>
+      <div class="stat">WPM: <span id="wpm">0</span></div>
+      <div class="stat">Accuracy: <span id="acc">0</span>%</div>
+    </div>
+  </div>
+  <p class="small muted" id="status"></p>
+  <div id="trainingResult" class="result hidden"></div>
+</div>
+
+<script id="typing-config" type="application/json">
+  {{ {
+    "durationSeconds": 30,
+    "promptText": prompt_text,
+    "promptId": prompt_id,
+    "liveWpm": live_wpm,
+    "ranked": False,
+    "training": True
+  } | tojson }}
+</script>
+<script src="/static/app.js"></script>
+<script src="/static/training_advanced.js"></script>
+{% endblock %}
