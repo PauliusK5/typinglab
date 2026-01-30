@@ -16,6 +16,8 @@ interaction, real-time feedback, and performance measurement.
 - Accuracy-aware WPM calculation
 - User authentication
 - Session storage and visualization
+- Three training modes
+- ELO rankings
 
 ## Running locally
 ```bash
