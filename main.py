@@ -482,14 +482,15 @@ def signup_page(request: Request):
 @app.post("/signup")
 def signup(
     request: Request,
-    name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    name: str | None = Form(None),
 ):
-    name = name.strip()
     email = email.strip().lower()
-    if len(name) < 2:
-        return templates.TemplateResponse("signup.html", {"request": request, "error": "Enter your name."})
+    if name:
+        name = name.strip()
+    if not name:
+        name = None
     if len(email) < 3 or "@" not in email:
         return templates.TemplateResponse("signup.html", {"request": request, "error": "Enter a valid email."})
     if len(password) < 6:

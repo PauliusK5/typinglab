@@ -3,8 +3,7 @@
 A full-stack web application for measuring typing speed and accuracy.
 
 ## Overview
-TypingLab is an independently built project exploring human–computer
-interaction, real-time feedback, and performance measurement.
+TypingLab is an independently built project with a task to help people improve their typing speed and accuracy through competitive challenges and trainings.
 
 ## Tech Stack
 - Backend: Python, FastAPI
