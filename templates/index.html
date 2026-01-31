@@ -2,7 +2,7 @@
 {% block content %}
 {% if show_home %}
   <div class="hero">
-    <h1 class="hero-title">Typing Lab</h1>
+    <h1 class="hero-title">TypingLab</h1>
   </div>
   <div class="typing-stage typing-fullwidth">
     <div class="typing-content">
@@ -39,7 +39,7 @@
       </div>
     </div>
   </div>
-  <div class="home-progress">
+  <div class="home-progress{% if not user_id %} progress-locked{% endif %}">
       <div class="home-progress-title">Your progress</div>
       <div class="home-progress-grid">
         <a class="progress-card progress-card--square" href="/training">
@@ -61,6 +61,14 @@
           <div class="progress-text">Current ELO</div>
         </div>
       </div>
+      {% if not user_id %}
+        <div class="progress-overlay">
+          <div class="progress-overlay-card">
+            <div class="progress-overlay-title">Create an account to access Training and Ranked Typing</div>
+            <a class="btn" href="/login">Log in</a>
+          </div>
+        </div>
+      {% endif %}
     </div>
 {% else %}
   <h1 class="ranked-title">Ranked Typing</h1>

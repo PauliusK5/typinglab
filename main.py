@@ -1,5 +1,6 @@
 import secrets
 import bcrypt
+from urllib.parse import urlparse
 from pathlib import Path
 from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -131,7 +132,7 @@ def update_rating(current: float, perf: float, duration_seconds: int) -> float:
 def require_login(request: Request):
     uid = get_current_user_id(request)
     if uid is None:
-        return RedirectResponse("/login", status_code=303)
+        return RedirectResponse("/", status_code=303)
     return uid
 
 def ensure_preferences(user_id: int):
@@ -183,18 +184,21 @@ def get_top_wpm_and_trophy():
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    uid_or_redirect = require_login(request)
-    if isinstance(uid_or_redirect, RedirectResponse):
-        return uid_or_redirect
-    user_id = uid_or_redirect
-
-    prefs = get_preferences(user_id)
-    user = get_user_summary(user_id)
-    display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
+    user_id = get_current_user_id(request)
+    logged_in = user_id is not None
+    if logged_in:
+        prefs = get_preferences(user_id)
+        user = get_user_summary(user_id)
+        display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
+        user_rating = user["rating"] if user and user["rating"] is not None else 1500
+        user_best_wpm = get_user_best_wpm(user_id)
+    else:
+        prefs = {"duration_seconds": 60, "theme": "dark", "live_wpm": 1}
+        display_name = None
+        user_rating = 1500
+        user_best_wpm = None
     prompt_text = make_word_prompt(words=300, source="1000")
     prompt_id = 0
-    user_rating = user["rating"] if user and user["rating"] is not None else 1500
-    user_best_wpm = get_user_best_wpm(user_id)
     top_wpm, top_trophy = get_top_wpm_and_trophy()
 
     return templates.TemplateResponse(
@@ -214,6 +218,7 @@ def home(request: Request):
             "top_trophy": top_trophy,
             "user_rating": user_rating,
             "user_id": user_id,
+            "logged_in": logged_in,
         },
     )
 
@@ -289,7 +294,7 @@ def training(request: Request):
     display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     return templates.TemplateResponse(
         "training.html",
-        {"request": request, "theme": prefs["theme"], "user_name": display_name, "user_id": user_id},
+        {"request": request, "theme": prefs["theme"], "user_name": display_name, "user_id": user_id, "logged_in": True},
     )
 
 @app.get("/training/easy", response_class=HTMLResponse)
@@ -300,6 +305,8 @@ def training_easy(request: Request):
     user_id = uid_or_redirect
 
     prefs = get_preferences(user_id)
+    user = get_user_summary(user_id)
+    display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     prompt_text = make_word_prompt(words=300, source="1000")
     return templates.TemplateResponse(
         "training_easy.html",
@@ -310,7 +317,9 @@ def training_easy(request: Request):
             "duration_seconds": int(prefs["duration_seconds"]),
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_name": display_name,
             "user_id": user_id,
+            "logged_in": True,
         },
     )
 
@@ -322,6 +331,8 @@ def training_advanced(request: Request):
     user_id = uid_or_redirect
 
     prefs = get_preferences(user_id)
+    user = get_user_summary(user_id)
+    display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     prompt_text = make_word_prompt(words=20, source="5000")
     return templates.TemplateResponse(
         "training_advanced.html",
@@ -332,7 +343,9 @@ def training_advanced(request: Request):
             "duration_seconds": 30,
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_name": display_name,
             "user_id": user_id,
+            "logged_in": True,
         },
     )
 
@@ -344,6 +357,8 @@ def training_hard(request: Request):
     user_id = uid_or_redirect
 
     prefs = get_preferences(user_id)
+    user = get_user_summary(user_id)
+    display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     prompt_text = make_word_prompt(words=50, source="5000", number_rate=0.15)
     return templates.TemplateResponse(
         "training_hard.html",
@@ -354,7 +369,9 @@ def training_hard(request: Request):
             "duration_seconds": 60,
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_name": display_name,
             "user_id": user_id,
+            "logged_in": True,
         },
     )
 
@@ -401,19 +418,21 @@ def typing_test(request: Request):
             "ranked": True,
             "user_id": user_id,
             "elo_rankings": elo_rankings,
+            "logged_in": True,
         },
     )
 
 @app.get("/leaderboard", response_class=HTMLResponse)
 def leaderboard(request: Request):
-    uid_or_redirect = require_login(request)
-    if isinstance(uid_or_redirect, RedirectResponse):
-        return uid_or_redirect
-    user_id = uid_or_redirect
-
-    prefs = get_preferences(user_id)
-    user = get_user_summary(user_id)
-    display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
+    user_id = get_current_user_id(request)
+    logged_in = user_id is not None
+    if logged_in:
+        prefs = get_preferences(user_id)
+        user = get_user_summary(user_id)
+        display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
+    else:
+        prefs = {"duration_seconds": 60, "theme": "dark", "live_wpm": 1}
+        display_name = None
     conn = get_conn()
     top = conn.execute("""
         SELECT u.name as name, u.email as email, ts.wpm as wpm, ts.accuracy as accuracy, ts.created_at as created_at
@@ -429,14 +448,16 @@ def leaderboard(request: Request):
         ORDER BY rating DESC
         LIMIT 25
     """).fetchall()
-
-    mine = conn.execute("""
-        SELECT wpm, accuracy, duration_seconds, created_at
-        FROM typing_sessions
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-        LIMIT 50
-    """, (user_id,)).fetchall()
+    if logged_in:
+        mine = conn.execute("""
+            SELECT wpm, accuracy, duration_seconds, created_at
+            FROM typing_sessions
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (user_id,)).fetchall()
+    else:
+        mine = []
     conn.close()
 
     return templates.TemplateResponse(
@@ -448,6 +469,8 @@ def leaderboard(request: Request):
             "mine": mine,
             "theme": prefs["theme"],
             "user_name": display_name,
+            "logged_in": logged_in,
+            "user_id": user_id,
         },
     )
 
@@ -464,7 +487,7 @@ def settings(request: Request):
     display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     return templates.TemplateResponse(
         "settings.html",
-        {"request": request, "prefs": prefs, "theme": prefs["theme"], "user_name": display_name},
+        {"request": request, "prefs": prefs, "theme": prefs["theme"], "user_name": display_name, "logged_in": True},
     )
 
 @app.post("/settings")
@@ -654,7 +677,7 @@ def login(
     return resp
 
 @app.post("/logout")
-def logout(request: Request):
+def logout(request: Request, next: str = Form(None)):
     sid = request.cookies.get(COOKIE_NAME)
     if sid:
         conn = get_conn()
@@ -662,6 +685,9 @@ def logout(request: Request):
         conn.commit()
         conn.close()
 
-    resp = RedirectResponse("/login", status_code=303)
+    target = "/"
+    if next and isinstance(next, str) and next.startswith("/"):
+        target = next
+    resp = RedirectResponse(target, status_code=303)
     resp.delete_cookie(COOKIE_NAME)
     return resp

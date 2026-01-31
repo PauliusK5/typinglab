@@ -39,23 +39,33 @@
     </table>
   </div>
 
-  <div class="card">
+  <div class="card{% if not logged_in %} card-locked{% endif %}">
     <h2>My history</h2>
-    <table>
-      <thead>
-        <tr><th>WPM</th><th>Accuracy</th><th>Duration</th><th>Date</th></tr>
-      </thead>
-      <tbody>
-        {% for r in mine %}
-          <tr>
-            <td>{{ "%.1f"|format(r.wpm) }}</td>
-            <td>{{ (r.accuracy * 100)|round(1) }}%</td>
-            <td>{{ r.duration_seconds }}s</td>
-            <td class="small">{{ r.created_at[:10] }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <div class="card-lock-body">
+      <table>
+        <thead>
+          <tr><th>WPM</th><th>Accuracy</th><th>Duration</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for r in mine %}
+            <tr>
+              <td>{{ "%.1f"|format(r.wpm) }}</td>
+              <td>{{ (r.accuracy * 100)|round(1) }}%</td>
+              <td>{{ r.duration_seconds }}s</td>
+              <td class="small">{{ r.created_at[:10] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not logged_in %}
+      <div class="card-lock-overlay">
+        <div class="progress-overlay-card">
+          <div class="progress-overlay-title">Log in required</div>
+          <a class="btn" href="/login">Log in</a>
+        </div>
+      </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

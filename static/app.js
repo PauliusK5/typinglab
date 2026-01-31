@@ -15,6 +15,11 @@
     }
   }
 
+  const savedDuration = Number(localStorage.getItem("typing_duration_seconds") || "0");
+  if (Number.isFinite(savedDuration) && savedDuration > 0) {
+    cfg.durationSeconds = savedDuration;
+  }
+
   const promptSource = document.getElementById("prompt-source");
   if (promptSource && !cfg.promptText) {
     cfg.promptText = promptSource.textContent || "";
@@ -174,7 +179,7 @@
   }
 
   async function submitResult(wpm, accuracy) {
-    if (!cfg.ranked) return;
+    if (!cfg.ranked || !cfg.userId) return;
     try {
       const res = await fetch("/api/session_json", {
         method: "POST",
@@ -730,6 +735,7 @@
         const next = Number(btn.dataset.duration || "0");
         if (!Number.isFinite(next) || next <= 0) return;
         cfg.durationSeconds = next;
+        localStorage.setItem("typing_duration_seconds", String(next));
         if (durationEl) durationEl.textContent = String(next);
         if (!started) {
           remaining = next;
@@ -1068,6 +1074,7 @@
   });
 
   async function updateTrainingProgressUI() {
+    if (!cfg.userId) return;
     let total = 0;
     try {
       const res = await fetch("/api/training_progress");

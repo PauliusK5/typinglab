@@ -7,23 +7,31 @@
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body class="dark">
+    {% set logged_in = (logged_in if logged_in is defined else (user_id is defined and user_id is not none)) %}
     <header class="topbar">
       <div class="brand"><a href="/">TypingLab</a></div>
       {% if not auth_page %}
       <nav class="nav">
         <a href="/">Home</a>
-        <a href="/training">Training</a>
-        <a href="/test">Ranked Typing</a>
-        <a href="/leaderboard">Leaderboard</a>
-        <details class="user-menu">
-          <summary class="user-name">{{ user_name if user_name else "User" }}</summary>
-          <div class="user-pop">
-            <a href="/settings">Settings</a>
-            <form action="/logout" method="post">
-              <button type="submit" class="linkbtn">Log out</button>
-            </form>
-          </div>
-        </details>
+        {% if logged_in %}
+          <a href="/training">Training</a>
+          <a href="/test">Ranked Typing</a>
+          <a href="/leaderboard">Leaderboard</a>
+          <details class="user-menu">
+            <summary class="user-name">{{ user_name if user_name else "User" }}</summary>
+            <div class="user-pop">
+              <a href="/settings">Settings</a>
+              <form action="/logout" method="post">
+                <input type="hidden" name="next" value="{{ request.url.path }}">
+                <button type="submit" class="linkbtn">Log out</button>
+              </form>
+            </div>
+          </details>
+        {% else %}
+          <a href="/login">Log in</a>
+          <a href="/signup">Sign up</a>
+          <a href="/leaderboard">Leaderboard</a>
+        {% endif %}
       </nav>
       {% endif %}
     </header>
