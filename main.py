@@ -375,6 +375,17 @@ def typing_test(request: Request):
     user = get_user_summary(user_id)
     display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     user_rating = user["rating"] if user and user["rating"] is not None else 1500
+    conn = get_conn()
+    elo_rankings = conn.execute(
+        "SELECT name, email, rating FROM users ORDER BY rating DESC LIMIT 25"
+    ).fetchall()
+    conn.close()
+    if not elo_rankings:
+        elo_rankings = [{
+            "name": user["name"] if user else None,
+            "email": user["email"] if user else None,
+            "rating": user_rating,
+        }]
     return templates.TemplateResponse(
         "index.html",
         {
@@ -389,6 +400,7 @@ def typing_test(request: Request):
             "show_home": False,
             "ranked": True,
             "user_id": user_id,
+            "elo_rankings": elo_rankings,
         },
     )
 

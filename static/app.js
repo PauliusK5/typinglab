@@ -45,9 +45,10 @@
   const resultTextEl = document.getElementById("resultText");
   const chartEl = document.getElementById("wpmChart");
   const homeTimerEl = document.getElementById("homeTimer");
-  const durationSelects = Array.from(
-    document.querySelectorAll("#durationSelect, #durationSelectTest")
-  );
+  const testTimerEl = document.getElementById("testTimer");
+  const trainingTimerEl = document.getElementById("trainingTimer");
+  const trainingCounterEl = document.getElementById("trainingCounter");
+  const durationRows = Array.from(document.querySelectorAll("[data-duration-row]"));
   const homeTypeboxEl = document.getElementById("homeTypebox");
   const restartHomeBtn = document.getElementById("restartHome");
   const testTypeboxEl = document.getElementById("testTypebox");
@@ -78,6 +79,9 @@
   let lineHeightPx = 0;
   let lastCaretLine = 0;
   let ignoreBeforeInput = false;
+  let desiredScrollTop = 0;
+  let isAutoScroll = false;
+  let scrollAnim = null;
 
   function reset() {
     started = false;
@@ -119,6 +123,8 @@
     accSeries = [];
 
     if (homeTimerEl) homeTimerEl.classList.add("hidden");
+    if (testTimerEl) testTimerEl.classList.add("hidden");
+    if (trainingTimerEl) trainingTimerEl.classList.add("hidden");
     if (homeTypeboxEl) {
       homeTypeboxEl.classList.remove("hidden");
       homeTypeboxEl.style.display = "";
@@ -138,6 +144,10 @@
     lastDesired = 0;
     lastCaretLine = 0;
     syncGhostScroll();
+    syncDurationPills();
+    if (trainingCounterEl && Number.isFinite(cfg.trainingRequiredWords)) {
+      trainingCounterEl.textContent = `0/${cfg.trainingRequiredWords}`;
+    }
   }
 
   function computeStats() {
@@ -246,6 +256,8 @@
           durationSeconds: cfg.durationSeconds,
           elapsedSeconds,
           levelId: cfg.trainingLevelId || 1,
+          wpm: netWpm,
+          accuracy,
         },
       });
       document.dispatchEvent(event);
@@ -437,10 +449,37 @@
     const lh = getLineHeightPx(inputEl);
     const scrollLines = Math.max(0, completedLines - 1);
     const desired = scrollLines * lh;
+    desiredScrollTop = desired;
     if (desired !== inputEl.scrollTop) {
-      inputEl.scrollTop = desired;
-      syncGhostScroll();
+      smoothScrollTo(desired);
     }
+  }
+
+  function smoothScrollTo(target) {
+    if (scrollAnim) cancelAnimationFrame(scrollAnim);
+    const start = inputEl.scrollTop;
+    const delta = target - start;
+    if (Math.abs(delta) < 1) {
+      inputEl.scrollTop = target;
+      syncGhostScroll();
+      return;
+    }
+    const duration = 140;
+    const startTs = performance.now();
+    isAutoScroll = true;
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTs) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      inputEl.scrollTop = start + delta * eased;
+      syncGhostScroll();
+      if (t < 1) {
+        scrollAnim = requestAnimationFrame(tick);
+      } else {
+        isAutoScroll = false;
+        scrollAnim = null;
+      }
+    };
+    scrollAnim = requestAnimationFrame(tick);
   }
 
   function computeLineEndsFromGhost() {
@@ -483,8 +522,11 @@
       timer = setInterval(tick, 1000);
       if (statusEl) statusEl.textContent = "Typing…";
       if (homeTimerEl) homeTimerEl.classList.remove("hidden");
+      if (testTimerEl) testTimerEl.classList.remove("hidden");
+      if (trainingTimerEl) trainingTimerEl.classList.remove("hidden");
       document.body.classList.add("typing-active");
     }
+    inputEl.focus();
 
     inputEl.value = promptPlain;
     setCaretToTyped();
@@ -497,7 +539,12 @@
     }
 
     if (cfg.training) {
-      if (typedValue.trim() === promptPlain.trim()) {
+      const correct = getCorrectWordCount();
+      const required = Number(cfg.trainingRequiredWords || 0);
+      if (trainingCounterEl && required > 0) {
+        trainingCounterEl.textContent = `${Math.min(correct, required)}/${required}`;
+      }
+      if (required > 0 && correct >= required) {
         endTest("completed");
       }
     } else if (typedValue === promptPlain) {
@@ -507,6 +554,27 @@
         endTest("completed");
       }
     }
+  }
+
+  function getLockedIndex() {
+    if (!cfg.training) return 0;
+    let last = 0;
+    const n = Math.min(typedValue.length, promptPlain.length);
+    for (let i = 0; i < n; i++) {
+      if (typedValue[i] !== promptPlain[i]) break;
+      if (promptPlain[i] === " ") last = i + 1;
+    }
+    return last;
+  }
+
+  function getCorrectWordCount() {
+    const typedWords = typedValue.trim().split(/\s+/).filter(Boolean);
+    const promptWords = promptPlain.trim().split(/\s+/).filter(Boolean);
+    let correct = 0;
+    for (let i = 0; i < typedWords.length && i < promptWords.length; i++) {
+      if (typedWords[i] === promptWords[i]) correct += 1;
+    }
+    return correct;
   }
 
   inputEl.addEventListener("beforeinput", (e) => {
@@ -527,10 +595,28 @@
     }
 
     if (type.startsWith("delete")) {
+      if (cfg.training) {
+        const lockedIndex = getLockedIndex();
+        if (typedValue.length <= lockedIndex) {
+          e.preventDefault();
+          setCaretToTyped();
+          return;
+        }
+      }
       if (start !== end) {
         // handled above
       } else if (type === "deleteContentBackward" && next.length) {
         next = next.slice(0, -1);
+      }
+    } else if (cfg.training) {
+      const required = Number(cfg.trainingRequiredWords || 0);
+      if (required > 0) {
+        const correct = getCorrectWordCount();
+        if (correct >= required) {
+          e.preventDefault();
+          setCaretToTyped();
+          return;
+        }
       }
     } else if (type === "insertText" || type === "insertCompositionText") {
       const data = e.data || "";
@@ -566,6 +652,14 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     let next = typedValue;
     if (e.key === "Backspace") {
+      if (cfg.training) {
+        const lockedIndex = getLockedIndex();
+        if (typedValue.length <= lockedIndex) {
+          e.preventDefault();
+          setCaretToTyped();
+          return;
+        }
+      }
       if (next.length) next = next.slice(0, -1);
     } else if (e.key === "Enter") {
       next = next + "\n";
@@ -582,8 +676,34 @@
   });
 
   inputEl.addEventListener("scroll", () => {
+    if (!isAutoScroll && inputEl.scrollTop !== desiredScrollTop) {
+      inputEl.scrollTop = desiredScrollTop;
+    }
     syncGhostScroll();
   });
+
+  inputEl.addEventListener("wheel", (e) => {
+    e.preventDefault();
+  }, { passive: false });
+
+  inputEl.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+  }, { passive: false });
+
+  inputEl.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    inputEl.focus();
+    setCaretToTyped();
+  });
+  inputEl.addEventListener("mouseup", (e) => {
+    e.preventDefault();
+    setCaretToTyped();
+  });
+  inputEl.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    inputEl.focus();
+    setCaretToTyped();
+  }, { passive: false });
 
   if (restartBtn) {
     restartBtn.addEventListener("click", (e) => {
@@ -592,20 +712,36 @@
     });
   }
 
-  if (durationSelects.length) {
-    durationSelects.forEach((sel) => {
-      sel.value = String(cfg.durationSeconds);
-      sel.addEventListener("change", () => {
-        const next = Number(sel.value);
-        if (!Number.isFinite(next)) return;
-        cfg.durationSeconds = next;
-        if (durationEl) durationEl.textContent = String(next);
-        reset();
+  function syncDurationPills() {
+    durationRows.forEach((row) => {
+      const pills = Array.from(row.querySelectorAll(".duration-pill"));
+      pills.forEach((pill) => {
+        const val = Number(pill.dataset.duration || "0");
+        pill.classList.toggle("is-active", val === cfg.durationSeconds);
       });
     });
   }
 
-  window.__setPrompt = (promptText, durationSeconds, levelId) => {
+  if (durationRows.length) {
+    durationRows.forEach((row) => {
+      row.addEventListener("click", (e) => {
+        const btn = e.target.closest(".duration-pill");
+        if (!btn) return;
+        const next = Number(btn.dataset.duration || "0");
+        if (!Number.isFinite(next) || next <= 0) return;
+        cfg.durationSeconds = next;
+        if (durationEl) durationEl.textContent = String(next);
+        if (!started) {
+          remaining = next;
+          if (timeEl) timeEl.textContent = String(next);
+        }
+        syncDurationPills();
+      });
+    });
+    syncDurationPills();
+  }
+
+  window.__setPrompt = (promptText, durationSeconds, levelId, requiredWords) => {
     if (typeof promptText === "string") {
       cfg.promptText = promptText;
       if (ghostEl) ghostEl.dataset.prompt = cfg.promptText;
@@ -618,6 +754,9 @@
     }
     if (Number.isFinite(levelId)) {
       cfg.trainingLevelId = levelId;
+    }
+    if (Number.isFinite(requiredWords)) {
+      cfg.trainingRequiredWords = requiredWords;
     }
     reset();
     if (trainingTypeboxEl) trainingTypeboxEl.classList.remove("hidden");

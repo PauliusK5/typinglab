@@ -9,13 +9,11 @@
       <div id="homeTimer" class="home-timer hidden">
         <span id="timeLeft">{{ duration_seconds }}</span>s
       </div>
-      <div class="duration-bar">
-        <select id="durationSelect" aria-label="Duration">
-          <option value="15">15s</option>
-          <option value="30">30s</option>
-          <option value="60">60s</option>
-          <option value="120">120s</option>
-        </select>
+      <div class="duration-bar duration-row" data-duration-row>
+        <button type="button" class="duration-pill" data-duration="15">15</button>
+        <button type="button" class="duration-pill" data-duration="30">30</button>
+        <button type="button" class="duration-pill" data-duration="60">60</button>
+        <button type="button" class="duration-pill" data-duration="120">120</button>
       </div>
       <div class="typebox typing-vars typebox--home" id="homeTypebox">
         <div class="typebox-inner">
@@ -65,19 +63,20 @@
       </div>
     </div>
 {% else %}
-  <h1>Ranked Typing</h1>
+  <h1 class="ranked-title">Ranked Typing</h1>
   <div class="typing-stage typing-fullwidth">
     <div class="typing-content">
-      <p class="small">Duration: <b id="duration">{{ duration_seconds }}</b>s</p>
+      <div id="testTimer" class="home-timer hidden">
+        <span id="timeLeft">{{ duration_seconds }}</span>s
+      </div>
+      <p class="small"></p>
 
       <div id="testTypebox">
-        <div class="duration-bar">
-          <select id="durationSelectTest" aria-label="Duration">
-            <option value="15">15s</option>
-            <option value="30">30s</option>
-            <option value="60">60s</option>
-            <option value="120">120s</option>
-          </select>
+        <div class="duration-bar duration-row" data-duration-row>
+          <button type="button" class="duration-pill" data-duration="15">15</button>
+          <button type="button" class="duration-pill" data-duration="30">30</button>
+          <button type="button" class="duration-pill" data-duration="60">60</button>
+          <button type="button" class="duration-pill" data-duration="120">120</button>
         </div>
         <div class="typebox typing-vars typebox--test">
           <div class="typebox-inner">
@@ -86,7 +85,7 @@
           </div>
         </div>
 
-        <div class="row">
+        <div class="row hidden" aria-hidden="true">
           <div class="stat">Time: <span id="timeLeft">{{ duration_seconds }}</span>s</div>
           <div class="stat">WPM: <span id="wpm">0</span></div>
           <div class="stat">Accuracy: <span id="acc">0</span>%</div>
@@ -109,21 +108,45 @@
             </div>
           </div>
         </div>
+        <button id="restart">Restart</button>
       </div>
 
-      <div class="row">
-        <button id="restart">Restart</button>
-        <a class="btn" href="/leaderboard">View leaderboard</a>
-      </div>
+      <div class="row justify-start"></div>
     </div>
   </div>
 {% endif %}
 
 {% if ranked %}
-  <div class="card reward-card">
-    <h2>Current ELO</h2>
-    <div class="elo-value" id="eloValue">{{ user_rating if user_rating is not none else 1500 }}</div>
-    <div class="elo-delta" id="eloDelta"></div>
+  <div class="typing-stage typing-fullwidth">
+    <div class="typing-content">
+      <div class="card reward-card elo-panel">
+        <h2>Current ELO</h2>
+        <div class="elo-value" id="eloValue">{{ user_rating if user_rating is not none else 1500 }}</div>
+        <div class="elo-delta" id="eloDelta"></div>
+        <table class="elo-table">
+          <thead>
+            <tr><th>Rank</th><th>User</th><th>ELO</th></tr>
+          </thead>
+          <tbody>
+            {% if elo_rankings and elo_rankings|length > 0 %}
+              {% for row in elo_rankings %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.name if row.name else row.email }}</td>
+                <td>{{ row.rating }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td>1</td>
+                <td>{{ user_name }}</td>
+                <td>{{ user_rating if user_rating is not none else 1500 }}</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 {% endif %}
 

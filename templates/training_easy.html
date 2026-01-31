@@ -2,17 +2,20 @@
 {% block content %}
 <h1>Easy Mode</h1>
 
-<div class="card">
+  <div class="card">
   <div class="training-levels">
     <button class="training-level" data-level="1">Level 1</button>
     <button class="training-level" data-level="2" data-locked="1">Level 2</button>
     <button class="training-level" data-level="3" data-locked="1">Level 3</button>
   </div>
-  <p class="small muted" id="trainingStatus">Pick a level to start.</p>
+  <p class="training-status" id="trainingStatus">Pick a level to start.</p>
 </div>
 
 <div class="card hidden" id="trainingBox">
-  <p class="small">Duration: <b id="duration">30</b>s</p>
+  <p class="small training-meta">
+    <span id="trainingTimer" class="hidden"><span id="timeLeft">30</span>s</span>
+    <span class="training-counter" id="trainingCounter">0/10</span>
+  </p>
   <div id="trainingTypebox">
     <div class="typebox typing-vars typebox--test">
       <div class="typebox-inner">
@@ -20,7 +23,7 @@
         <textarea id="input" rows="4"></textarea>
       </div>
     </div>
-    <div class="row">
+    <div class="row hidden" aria-hidden="true">
       <div class="stat">Time: <span id="timeLeft">30</span>s</div>
       <div class="stat">WPM: <span id="wpm">0</span></div>
       <div class="stat">Accuracy: <span id="acc">0</span>%</div>

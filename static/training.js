@@ -95,16 +95,16 @@
       trainingResult.textContent = "";
     }
     trainingBox.classList.remove("hidden");
-    if (window.__setPrompt) {
-      window.__setPrompt("loading", level.duration, levelId);
-    }
+      if (window.__setPrompt) {
+        window.__setPrompt("loading", level.duration, levelId, level.words);
+      }
 
     try {
-      const res = await fetch(`/api/prompt?words=${level.words}`);
+      const res = await fetch(`/api/prompt?words=300`);
       const j = await res.json();
       if (!j || !j.prompt) return;
       if (window.__setPrompt) {
-        window.__setPrompt(j.prompt, level.duration, levelId);
+        window.__setPrompt(j.prompt, level.duration, levelId, level.words);
       }
     } catch (e) {
       // ignore
@@ -117,7 +117,6 @@
     let correct = 0;
     for (let i = 0; i < tWords.length && i < pWords.length; i++) {
       if (tWords[i] === pWords[i]) correct += 1;
-      else break;
     }
     return { correct, total: pWords.length };
   }
@@ -126,8 +125,9 @@
     const detail = e.detail || {};
     if (!detail.training) return;
     const levelId = detail.levelId || 1;
-    const { correct, total } = countCorrectWords(detail.typedText || "", detail.promptText || "");
-    const percent = detail.reason === "completed" ? 100 : Math.min(100, Math.round((correct / total) * 100));
+    const { correct } = countCorrectWords(detail.typedText || "", detail.promptText || "");
+    const required = LEVELS.find((l) => l.id === levelId)?.words || 0;
+    const percent = required > 0 ? Math.min(100, Math.round((correct / required) * 100)) : 0;
     state[levelId] = Math.max(state[levelId] || 0, percent);
     progress.easy[levelId] = state[levelId];
     saveState(levelId, percent).finally(() => {
@@ -136,7 +136,21 @@
     });
     if (trainingResult) {
       trainingResult.classList.remove("hidden");
-      trainingResult.textContent = `Level ${levelId} complete: ${percent}%`;
+      const wpm = typeof detail.wpm === "number" ? detail.wpm.toFixed(1) : "0.0";
+      const acc = typeof detail.accuracy === "number" ? `${(detail.accuracy * 100).toFixed(1)}%` : "0%";
+      trainingResult.innerHTML = `
+        <div class="training-result-title">Level ${levelId} complete: ${percent}%</div>
+        <div class="training-result-grid">
+          <div class="training-result-box">
+            <div class="training-result-label">WPM</div>
+            <div class="training-result-value">${wpm}</div>
+          </div>
+          <div class="training-result-box">
+            <div class="training-result-label">Accuracy</div>
+            <div class="training-result-value">${acc}</div>
+          </div>
+        </div>
+      `;
     }
   });
 
