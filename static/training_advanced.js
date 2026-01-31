@@ -10,22 +10,33 @@
     { id: 3, words: 32, duration: 30 },
   ];
 
-  const storageKey = "training_advanced_progress";
-  const state = loadState();
+  const userId = (window.TYPINGLAB && window.TYPINGLAB.userId) ? String(window.TYPINGLAB.userId) : "anon";
+  const state = { 1: 0, 2: 0, 3: 0 };
 
-  function loadState() {
+  async function fetchProgress() {
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return { 1: 0, 2: 0, 3: 0 };
-      const parsed = JSON.parse(raw);
-      return { 1: parsed[1] || 0, 2: parsed[2] || 0, 3: parsed[3] || 0 };
+      const res = await fetch("/api/training_progress");
+      const j = await res.json();
+      if (j && j.ok && j.progress && j.progress.advanced) {
+        state[1] = j.progress.advanced[1] || 0;
+        state[2] = j.progress.advanced[2] || 0;
+        state[3] = j.progress.advanced[3] || 0;
+      }
     } catch (e) {
-      return { 1: 0, 2: 0, 3: 0 };
+      // ignore
     }
   }
 
-  function saveState() {
-    localStorage.setItem(storageKey, JSON.stringify(state));
+  async function saveState(levelId, percent) {
+    try {
+      await fetch("/api/training_progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "advanced", level: levelId, percent }),
+      });
+    } catch (e) {
+      // ignore
+    }
   }
 
   function updateButtons() {
@@ -85,8 +96,9 @@
     const { correct, total } = countCorrectWords(detail.typedText || "", detail.promptText || "");
     const percent = detail.reason === "completed" ? 100 : Math.min(100, Math.round((correct / total) * 100));
     state[levelId] = Math.max(state[levelId] || 0, percent);
-    saveState();
-    updateButtons();
+    saveState(levelId, percent).finally(() => {
+      updateButtons();
+    });
     if (trainingResult) {
       trainingResult.classList.remove("hidden");
       trainingResult.textContent = `Level ${levelId} complete: ${percent}%`;
@@ -101,5 +113,7 @@
     });
   });
 
-  updateButtons();
+  fetchProgress().finally(() => {
+    updateButtons();
+  });
 })();

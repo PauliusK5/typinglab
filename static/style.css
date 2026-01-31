@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
 html, body { height: 100%; }
 
 body {
@@ -22,19 +24,20 @@ body::before {
 
 :root {
   /* Typography */
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 
   /* Theme tokens */
   --bg: #070a14;
   --panel: rgba(255,255,255,0.07);
   --panel-strong: rgba(255,255,255,0.10);
-  --text: rgba(255,255,255,0.92);
-  --muted: rgba(255,255,255,0.68);
+  --text: rgba(229,231,235,0.95);
+  --muted: rgba(229,231,235,0.6);
   --border: rgba(255,255,255,0.12);
 
-  --accent: #7c3aed;   /* purple */
-  --accent2: #22c55e;  /* green */
+  --accent: #facc15;
+  --accent2: #22c55e;
   --danger: #ef4444;
+  --typing-max: 1200px;
 
   --radius: 16px;
   --shadow: 0 12px 30px rgba(0,0,0,0.35);
@@ -50,10 +53,11 @@ body::before {
 body {
   margin: 0;
   color: var(--text);
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background:
-    radial-gradient(1200px 600px at 20% 10%, rgba(124,58,237,0.35), transparent 60%),
-    radial-gradient(900px 500px at 80% 30%, rgba(34,197,94,0.25), transparent 55%),
-    radial-gradient(800px 500px at 50% 90%, rgba(59,130,246,0.20), transparent 60%),
+    radial-gradient(1200px 600px at 20% 10%, rgba(250,204,21,0.15), transparent 60%),
+    radial-gradient(900px 500px at 80% 30%, rgba(34,197,94,0.12), transparent 55%),
+    radial-gradient(800px 500px at 50% 90%, rgba(59,130,246,0.10), transparent 60%),
     var(--bg);
 }
 
@@ -71,6 +75,7 @@ a { color: inherit; text-decoration: underline; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .brand {
@@ -219,21 +224,22 @@ button:hover, .btn:hover { filter: brightness(1.05); }
   position: relative;
   border-radius: 14px;
   margin: 8px 0 12px;
-  background: var(--typebox-bg);
-  border: 1px solid var(--typebox-border);
+  background: transparent;
+  border: none;
   overflow: hidden;
+  width: 100%;
 }
 
 .typebox:focus-within {
-  border-color: rgba(124,58,237,0.65);
-  box-shadow: 0 0 0 4px rgba(124,58,237,0.18);
+  box-shadow: none;
 }
 
 .typebox textarea {
   background: transparent !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent;
-  caret-color: transparent;
+  caret-color: var(--accent);
+  caret-width: 5px;
   position: relative;
   z-index: 6;
   border: none;
@@ -301,7 +307,7 @@ button:hover, .btn:hover { filter: brightness(1.05); }
 }
 .typebox--home textarea, .typebox--home .ghost {
   line-height: 1.55 !important;
-  font-size: 1.25rem !important;
+  font-size: 2.1rem !important;
   padding: 12px !important;
   white-space: pre-wrap !important;
   overflow-wrap: normal !important;
@@ -323,7 +329,7 @@ button:hover, .btn:hover { filter: brightness(1.05); }
 .typebox--test textarea,
 .typebox--test .ghost {
   line-height: 1.55 !important;
-  font-size: 1.25rem !important;
+  font-size: 2.1rem !important;
   padding: 12px !important;
   white-space: pre-wrap !important;
   overflow-wrap: normal !important;
@@ -354,10 +360,16 @@ button:hover, .btn:hover { filter: brightness(1.05); }
 .result {
   margin-top: 12px;
   font-weight: 900;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  background: rgba(12,14,18,0.72);
   padding: 16px;
+  box-shadow: var(--shadow);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.result.hidden {
+  opacity: 0;
+  transform: translateY(8px);
 }
 .result-grid {
   display: grid;
@@ -527,6 +539,39 @@ th { color: var(--muted); font-weight: 800; }
   margin-top: 56px;
   padding-bottom: 64px;
 }
+.typing-fullwidth {
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 0 6vw 16px;
+}
+.typing-stage {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+.typing-content > * {
+  max-width: var(--typing-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+.typing-active .topbar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+.typing-active .hero,
+.typing-active .home-progress,
+.typing-active .duration-bar,
+.typing-active .small.muted,
+.typing-active .row {
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
 .home-progress-title {
   text-align: center;
   font-weight: 900;
@@ -559,6 +604,7 @@ th { color: var(--muted); font-weight: 800; }
   background:
     conic-gradient(var(--accent) calc(var(--progress) * 1%), rgba(255,255,255,0.1) 0);
   position: relative;
+  transition: --progress 0.6s ease, transform 0.3s ease;
 }
 .progress-ring::after {
   content: "";
@@ -669,12 +715,19 @@ th { color: var(--muted); font-weight: 800; }
   position: relative;
 }
 
+.typebox-inner {
+  position: relative;
+  height: 100%;
+  max-width: var(--typing-max);
+  margin: 0 auto;
+}
+
 /* Make BOTH layers identical in typography + padding */
 .typebox textarea,
 .typebox .ghost {
   padding: 12px !important;
   line-height: 1.55 !important;
-  font-size: 1.9rem !important; /* match your home size; adjust if needed */
+  font-size: 2.1rem !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
 
   /* Make wrapping behavior identical */
@@ -692,7 +745,8 @@ th { color: var(--muted); font-weight: 800; }
 .typebox textarea {
   color: transparent !important;
   background: transparent !important;
-  caret-color: var(--caret) !important;
+  caret-color: var(--accent) !important;
+  caret-width: 5px;
   border: none !important;
   outline: none !important;
   resize: none !important;
@@ -702,11 +756,15 @@ th { color: var(--muted); font-weight: 800; }
 }
 
 /* Ghost overlay should never affect layout */
-.typebox .ghost {
+.typebox-inner .ghost {
   position: absolute !important;
   inset: 0 !important;
   pointer-events: none !important;
   overflow: hidden !important;
+}
+.typebox-inner textarea {
+  position: absolute !important;
+  inset: 0 !important;
 }
 .ghost .ghost-caret {
   position: absolute;

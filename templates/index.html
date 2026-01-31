@@ -4,39 +4,44 @@
   <div class="hero">
     <h1 class="hero-title">Typing Lab</h1>
   </div>
-  <div class="card minimal-card">
-    <div id="homeTimer" class="home-timer hidden">
-      <span id="timeLeft">{{ duration_seconds }}</span>s
-    </div>
-    <div class="duration-bar">
-      <select id="durationSelect" aria-label="Duration">
-        <option value="15">15s</option>
-        <option value="30">30s</option>
-        <option value="60">60s</option>
-        <option value="120">120s</option>
-      </select>
-    </div>
-    <div class="typebox typing-vars typebox--home" id="homeTypebox">
-      <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
-      <textarea id="input" rows="3"></textarea>
-    </div>
-    <div id="result" class="result hidden">
-      <div class="result-grid">
-        <canvas id="wpmChart" width="520" height="220"></canvas>
-        <div class="result-stats">
-          <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
-            <span id="wpmValue">0</span>
-            <div class="wpm-label">WPM</div>
-          </div>
-          <div class="accuracy-card">
-            <div class="accuracy-value" id="accValue">0%</div>
-            <div class="accuracy-label">Accuracy</div>
-          </div>
+  <div class="typing-stage typing-fullwidth">
+    <div class="typing-content">
+      <div id="homeTimer" class="home-timer hidden">
+        <span id="timeLeft">{{ duration_seconds }}</span>s
+      </div>
+      <div class="duration-bar">
+        <select id="durationSelect" aria-label="Duration">
+          <option value="15">15s</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+          <option value="120">120s</option>
+        </select>
+      </div>
+      <div class="typebox typing-vars typebox--home" id="homeTypebox">
+        <div class="typebox-inner">
+          <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+          <textarea id="input" rows="3"></textarea>
         </div>
       </div>
-      <button id="restartHome">Restart</button>
+      <div id="result" class="result hidden">
+        <div class="result-grid">
+          <canvas id="wpmChart" width="520" height="220"></canvas>
+          <div class="result-stats">
+            <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
+              <span id="wpmValue">0</span>
+              <div class="wpm-label">WPM</div>
+            </div>
+            <div class="accuracy-card">
+              <div class="accuracy-value" id="accValue">0%</div>
+              <div class="accuracy-label">Accuracy</div>
+            </div>
+          </div>
+        </div>
+        <button id="restartHome">Restart</button>
+      </div>
     </div>
-    <div class="home-progress">
+  </div>
+  <div class="home-progress">
       <div class="home-progress-title">Your progress</div>
       <div class="home-progress-grid">
         <a class="progress-card progress-card--square" href="/training">
@@ -47,7 +52,7 @@
         </a>
         <div class="progress-card progress-card--square">
           <div class="progress-ring progress-ring--plain">
-            <span class="progress-value">{{ "%.1f"|format(top_wpm) if top_wpm is not none else "—" }}</span>
+            <span class="progress-value">{{ "%.1f"|format(user_best_wpm) if user_best_wpm is not none else "—" }}</span>
           </div>
           <div class="progress-text">Best WPM</div>
         </div>
@@ -59,54 +64,57 @@
         </div>
       </div>
     </div>
-  </div>
 {% else %}
   <h1>Ranked Typing</h1>
-  <div class="card">
-    <p class="small">Duration: <b id="duration">{{ duration_seconds }}</b>s</p>
+  <div class="typing-stage typing-fullwidth">
+    <div class="typing-content">
+      <p class="small">Duration: <b id="duration">{{ duration_seconds }}</b>s</p>
 
-    <div id="testTypebox">
-      <div class="duration-bar">
-        <select id="durationSelectTest" aria-label="Duration">
-          <option value="15">15s</option>
-          <option value="30">30s</option>
-          <option value="60">60s</option>
-          <option value="120">120s</option>
-        </select>
-      </div>
-      <div class="typebox typing-vars typebox--test">
-        <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
-        <textarea id="input" rows="4"></textarea>
-      </div>
-
-      <div class="row">
-        <div class="stat">Time: <span id="timeLeft">{{ duration_seconds }}</span>s</div>
-        <div class="stat">WPM: <span id="wpm">0</span></div>
-        <div class="stat">Accuracy: <span id="acc">0</span>%</div>
-      </div>
-    </div>
-
-    <p class="small muted" id="status"></p>
-
-    <div id="result" class="result hidden">
-      <div class="result-grid">
-        <canvas id="wpmChart" width="520" height="220"></canvas>
-        <div class="result-stats">
-          <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
-            <span id="wpmValue">0</span>
-            <div class="wpm-label">WPM</div>
+      <div id="testTypebox">
+        <div class="duration-bar">
+          <select id="durationSelectTest" aria-label="Duration">
+            <option value="15">15s</option>
+            <option value="30">30s</option>
+            <option value="60">60s</option>
+            <option value="120">120s</option>
+          </select>
+        </div>
+        <div class="typebox typing-vars typebox--test">
+          <div class="typebox-inner">
+            <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+            <textarea id="input" rows="4"></textarea>
           </div>
-          <div class="accuracy-card">
-            <div class="accuracy-value" id="accValue">0%</div>
-            <div class="accuracy-label">Accuracy</div>
+        </div>
+
+        <div class="row">
+          <div class="stat">Time: <span id="timeLeft">{{ duration_seconds }}</span>s</div>
+          <div class="stat">WPM: <span id="wpm">0</span></div>
+          <div class="stat">Accuracy: <span id="acc">0</span>%</div>
+        </div>
+      </div>
+
+      <p class="small muted" id="status"></p>
+
+      <div id="result" class="result hidden">
+        <div class="result-grid">
+          <canvas id="wpmChart" width="520" height="220"></canvas>
+          <div class="result-stats">
+            <div class="wpm-ring" id="wpmRing" style="--wpm-progress: 0; --wpm-color: #ef4444;">
+              <span id="wpmValue">0</span>
+              <div class="wpm-label">WPM</div>
+            </div>
+            <div class="accuracy-card">
+              <div class="accuracy-value" id="accValue">0%</div>
+              <div class="accuracy-label">Accuracy</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="row">
-      <button id="restart">Restart</button>
-      <a class="btn" href="/leaderboard">View leaderboard</a>
+      <div class="row">
+        <button id="restart">Restart</button>
+        <a class="btn" href="/leaderboard">View leaderboard</a>
+      </div>
     </div>
   </div>
 {% endif %}
@@ -125,7 +133,8 @@
     "promptText": prompt_text,
     "promptId": prompt_id,
     "liveWpm": live_wpm,
-    "ranked": ranked
+    "ranked": ranked,
+    "userId": user_id
   } | tojson }}
 </script>
 <script src="/static/app.js"></script>

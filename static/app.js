@@ -84,6 +84,7 @@
     startTs = null;
     finished = false;
     remaining = cfg.durationSeconds;
+    document.body.classList.remove("typing-active");
 
     if (timer) clearInterval(timer);
     timer = null;
@@ -194,6 +195,7 @@
 
     if (timer) clearInterval(timer);
     timer = null;
+    document.body.classList.remove("typing-active");
 
     const { netWpm, accuracy } = computeStats();
 
@@ -481,6 +483,7 @@
       timer = setInterval(tick, 1000);
       if (statusEl) statusEl.textContent = "Typing…";
       if (homeTimerEl) homeTimerEl.classList.remove("hidden");
+      document.body.classList.add("typing-active");
     }
 
     inputEl.value = promptPlain;
@@ -925,34 +928,31 @@
     renderGhost();
   });
 
-  function getTrainingProgress() {
+  async function updateTrainingProgressUI() {
+    let total = 0;
     try {
-      const rawEasy = localStorage.getItem("training_easy_progress");
-      const rawAdv = localStorage.getItem("training_advanced_progress");
-      const rawHard = localStorage.getItem("training_hard_progress");
-      const easy = rawEasy ? JSON.parse(rawEasy) : { 1: 0, 2: 0, 3: 0 };
-      const adv = rawAdv ? JSON.parse(rawAdv) : { 1: 0, 2: 0, 3: 0 };
-      const hard = rawHard ? JSON.parse(rawHard) : { 1: 0, 2: 0, 3: 0 };
-      const vals = [
-        easy[1] || 0,
-        easy[2] || 0,
-        easy[3] || 0,
-        adv[1] || 0,
-        adv[2] || 0,
-        adv[3] || 0,
-        hard[1] || 0,
-        hard[2] || 0,
-        hard[3] || 0,
-      ];
-      const total = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
-      return { total };
+      const res = await fetch("/api/training_progress");
+      const j = await res.json();
+      if (j && j.ok && j.progress) {
+        const easy = j.progress.easy || { 1: 0, 2: 0, 3: 0 };
+        const adv = j.progress.advanced || { 1: 0, 2: 0, 3: 0 };
+        const hard = j.progress.hard || { 1: 0, 2: 0, 3: 0 };
+        const vals = [
+          easy[1] || 0,
+          easy[2] || 0,
+          easy[3] || 0,
+          adv[1] || 0,
+          adv[2] || 0,
+          adv[3] || 0,
+          hard[1] || 0,
+          hard[2] || 0,
+          hard[3] || 0,
+        ];
+        total = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      }
     } catch (e) {
-      return { total: 0 };
+      // ignore
     }
-  }
-
-  function updateTrainingProgressUI() {
-    const { total } = getTrainingProgress();
     const ringHome = document.getElementById("homeTrainingProgressRing");
     const valHome = document.getElementById("homeTrainingProgressValue");
     const ringTraining = document.getElementById("trainingProgressRing");

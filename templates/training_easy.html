@@ -15,8 +15,10 @@
   <p class="small">Duration: <b id="duration">30</b>s</p>
   <div id="trainingTypebox">
     <div class="typebox typing-vars typebox--test">
-      <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
-      <textarea id="input" rows="4"></textarea>
+      <div class="typebox-inner">
+        <div id="ghost" class="ghost" aria-hidden="true" data-prompt="{{ prompt_text }}">{{ prompt_text }}</div>
+        <textarea id="input" rows="4"></textarea>
+      </div>
     </div>
     <div class="row">
       <div class="stat">Time: <span id="timeLeft">30</span>s</div>
@@ -35,7 +37,8 @@
     "promptId": prompt_id,
     "liveWpm": live_wpm,
     "ranked": False,
-    "training": True
+    "training": True,
+    "userId": user_id
   } | tojson }}
 </script>
 <script src="/static/app.js"></script>

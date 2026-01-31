@@ -74,6 +74,34 @@ def get_user_summary(user_id: int):
     conn.close()
     return row
 
+def get_user_best_wpm(user_id: int):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT MAX(wpm) as wpm FROM typing_sessions WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return row["wpm"] if row and row["wpm"] is not None else None
+
+def get_training_progress(user_id: int):
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT mode, level, percent FROM training_progress WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    conn.close()
+    progress = {
+        "easy": {1: 0, 2: 0, 3: 0},
+        "advanced": {1: 0, 2: 0, 3: 0},
+        "hard": {1: 0, 2: 0, 3: 0},
+    }
+    for row in rows:
+        mode = row["mode"]
+        level = int(row["level"])
+        if mode in progress and level in progress[mode]:
+            progress[mode][level] = int(row["percent"])
+    return progress
+
 def expected_wpm(rating: float) -> float:
     return ELO_W0 * (10 ** ((rating - 1500.0) / 400.0))
 
@@ -166,6 +194,7 @@ def home(request: Request):
     prompt_text = make_word_prompt(words=300, source="1000")
     prompt_id = 0
     user_rating = user["rating"] if user and user["rating"] is not None else 1500
+    user_best_wpm = get_user_best_wpm(user_id)
     top_wpm, top_trophy = get_top_wpm_and_trophy()
 
     return templates.TemplateResponse(
@@ -181,8 +210,10 @@ def home(request: Request):
             "show_home": True,
             "ranked": False,
             "top_wpm": top_wpm,
+            "user_best_wpm": user_best_wpm,
             "top_trophy": top_trophy,
             "user_rating": user_rating,
+            "user_id": user_id,
         },
     )
 
@@ -203,6 +234,49 @@ def api_prompt(request: Request):
     words = max(5, min(1000, words))
     return JSONResponse({"prompt": make_word_prompt(words=words, source=source, number_rate=number_rate)})
 
+@app.get("/api/training_progress")
+def api_training_progress(request: Request):
+    uid_or_redirect = require_login(request)
+    if isinstance(uid_or_redirect, RedirectResponse):
+        return JSONResponse({"ok": False}, status_code=401)
+    user_id = uid_or_redirect
+    progress = get_training_progress(user_id)
+    return JSONResponse({"ok": True, "progress": progress})
+
+@app.post("/api/training_progress")
+async def api_training_progress_update(request: Request):
+    uid_or_redirect = require_login(request)
+    if isinstance(uid_or_redirect, RedirectResponse):
+        return JSONResponse({"ok": False}, status_code=401)
+    user_id = uid_or_redirect
+    payload = await request.json()
+    try:
+        mode = str(payload.get("mode", ""))
+        level = int(payload.get("level", 0))
+        percent = int(payload.get("percent", 0))
+    except Exception:
+        return JSONResponse({"ok": False}, status_code=400)
+    if mode not in ("easy", "advanced", "hard"):
+        return JSONResponse({"ok": False}, status_code=400)
+    if level not in (1, 2, 3):
+        return JSONResponse({"ok": False}, status_code=400)
+    percent = max(0, min(100, percent))
+
+    conn = get_conn()
+    conn.execute(
+        """
+        INSERT INTO training_progress (user_id, mode, level, percent)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, mode, level) DO UPDATE SET
+          percent = excluded.percent,
+          updated_at = datetime('now')
+        """,
+        (user_id, mode, level, percent),
+    )
+    conn.commit()
+    conn.close()
+    return JSONResponse({"ok": True})
+
 @app.get("/training", response_class=HTMLResponse)
 def training(request: Request):
     uid_or_redirect = require_login(request)
@@ -215,7 +289,7 @@ def training(request: Request):
     display_name = user["name"] if user and user["name"] else (user["email"] if user else "User")
     return templates.TemplateResponse(
         "training.html",
-        {"request": request, "theme": prefs["theme"], "user_name": display_name},
+        {"request": request, "theme": prefs["theme"], "user_name": display_name, "user_id": user_id},
     )
 
 @app.get("/training/easy", response_class=HTMLResponse)
@@ -236,6 +310,7 @@ def training_easy(request: Request):
             "duration_seconds": int(prefs["duration_seconds"]),
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_id": user_id,
         },
     )
 
@@ -257,6 +332,7 @@ def training_advanced(request: Request):
             "duration_seconds": 30,
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_id": user_id,
         },
     )
 
@@ -278,6 +354,7 @@ def training_hard(request: Request):
             "duration_seconds": 60,
             "theme": prefs["theme"],
             "live_wpm": int(prefs["live_wpm"]),
+            "user_id": user_id,
         },
     )
 
@@ -311,6 +388,7 @@ def typing_test(request: Request):
             "user_rating": user_rating,
             "show_home": False,
             "ranked": True,
+            "user_id": user_id,
         },
     )
 

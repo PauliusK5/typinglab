@@ -15,23 +15,38 @@
     { id: 3, words: 30, duration: 30 },
   ];
 
-  const storageKey = "training_easy_progress";
-  const state = loadState();
+  const state = { 1: 0, 2: 0, 3: 0 };
+  let progress = {
+    easy: { 1: 0, 2: 0, 3: 0 },
+    advanced: { 1: 0, 2: 0, 3: 0 },
+    hard: { 1: 0, 2: 0, 3: 0 },
+  };
 
-  function loadState() {
+  async function fetchProgress() {
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return { 1: 0, 2: 0, 3: 0 };
-      const parsed = JSON.parse(raw);
-      return { 1: parsed[1] || 0, 2: parsed[2] || 0, 3: parsed[3] || 0 };
+      const res = await fetch("/api/training_progress");
+      const j = await res.json();
+      if (j && j.ok && j.progress) {
+        progress = j.progress;
+        state[1] = progress.easy[1] || 0;
+        state[2] = progress.easy[2] || 0;
+        state[3] = progress.easy[3] || 0;
+      }
     } catch (e) {
-      return { 1: 0, 2: 0, 3: 0 };
+      // ignore
     }
   }
 
-  function saveState() {
-    localStorage.setItem(storageKey, JSON.stringify(state));
-    updateTrainingPageSummary();
+  async function saveState(levelId, percent) {
+    try {
+      await fetch("/api/training_progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "easy", level: levelId, percent }),
+      });
+    } catch (e) {
+      // ignore
+    }
   }
 
   function updateButtons() {
@@ -58,23 +73,11 @@
     const easyTotal = Math.round((pct1 + pct2 + pct3) / 3);
     if (easyPercent) easyPercent.textContent = `${easyTotal}%`;
 
-    let adv = { 1: 0, 2: 0, 3: 0 };
-    try {
-      const advRaw = localStorage.getItem("training_advanced_progress");
-      if (advRaw) adv = JSON.parse(advRaw);
-    } catch (e) {
-      // ignore
-    }
+    const adv = progress.advanced || { 1: 0, 2: 0, 3: 0 };
     const advTotal = Math.round(((adv[1] || 0) + (adv[2] || 0) + (adv[3] || 0)) / 3);
     if (advancedPercent) advancedPercent.textContent = `${advTotal}%`;
 
-    let hard = { 1: 0, 2: 0, 3: 0 };
-    try {
-      const hardRaw = localStorage.getItem("training_hard_progress");
-      if (hardRaw) hard = JSON.parse(hardRaw);
-    } catch (e) {
-      // ignore
-    }
+    const hard = progress.hard || { 1: 0, 2: 0, 3: 0 };
     const hardTotal = Math.round(((hard[1] || 0) + (hard[2] || 0) + (hard[3] || 0)) / 3);
     if (hardPercent) hardPercent.textContent = `${hardTotal}%`;
 
@@ -126,8 +129,11 @@
     const { correct, total } = countCorrectWords(detail.typedText || "", detail.promptText || "");
     const percent = detail.reason === "completed" ? 100 : Math.min(100, Math.round((correct / total) * 100));
     state[levelId] = Math.max(state[levelId] || 0, percent);
-    saveState();
-    updateButtons();
+    progress.easy[levelId] = state[levelId];
+    saveState(levelId, percent).finally(() => {
+      updateButtons();
+      updateTrainingPageSummary();
+    });
     if (trainingResult) {
       trainingResult.classList.remove("hidden");
       trainingResult.textContent = `Level ${levelId} complete: ${percent}%`;
@@ -142,6 +148,8 @@
     });
   });
 
-  updateButtons();
-  updateTrainingPageSummary();
+  fetchProgress().finally(() => {
+    updateButtons();
+    updateTrainingPageSummary();
+  });
 })();

@@ -63,5 +63,17 @@ def init_db() -> None:
     );
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS training_progress (
+        user_id INTEGER NOT NULL,
+        mode TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        percent INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, mode, level),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    """)
+
     conn.commit()
     conn.close()
