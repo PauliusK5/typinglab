@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, Form, Response
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import text
 
 from db import get_conn, init_db
 
@@ -60,8 +61,8 @@ def get_current_user_id(request: Request):
         return None
     conn = get_conn()
     row = conn.execute(
-        "SELECT user_id FROM auth_sessions WHERE session_id = ?",
-        (sid,),
+        text("SELECT user_id FROM auth_sessions WHERE session_id = :sid"),
+        {"sid": sid},
     ).fetchone()
     conn.close()
     return row["user_id"] if row else None
@@ -69,8 +70,8 @@ def get_current_user_id(request: Request):
 def get_user_summary(user_id: int):
     conn = get_conn()
     row = conn.execute(
-        "SELECT id, name, email, rating FROM users WHERE id = ?",
-        (user_id,),
+        text("SELECT id, name, email, rating FROM users WHERE id = :user_id"),
+        {"user_id": user_id},
     ).fetchone()
     conn.close()
     return row
@@ -78,8 +79,8 @@ def get_user_summary(user_id: int):
 def get_user_best_wpm(user_id: int):
     conn = get_conn()
     row = conn.execute(
-        "SELECT MAX(wpm) as wpm FROM typing_sessions WHERE user_id = ?",
-        (user_id,),
+        text("SELECT MAX(wpm) as wpm FROM typing_sessions WHERE user_id = :user_id"),
+        {"user_id": user_id},
     ).fetchone()
     conn.close()
     return row["wpm"] if row and row["wpm"] is not None else None
@@ -87,8 +88,8 @@ def get_user_best_wpm(user_id: int):
 def get_training_progress(user_id: int):
     conn = get_conn()
     rows = conn.execute(
-        "SELECT mode, level, percent FROM training_progress WHERE user_id = ?",
-        (user_id,),
+        text("SELECT mode, level, percent FROM training_progress WHERE user_id = :user_id"),
+        {"user_id": user_id},
     ).fetchall()
     conn.close()
     progress = {
@@ -137,11 +138,14 @@ def require_login(request: Request):
 
 def ensure_preferences(user_id: int):
     conn = get_conn()
-    row = conn.execute("SELECT user_id FROM preferences WHERE user_id = ?", (user_id,)).fetchone()
+    row = conn.execute(
+        text("SELECT user_id FROM preferences WHERE user_id = :user_id"),
+        {"user_id": user_id},
+    ).fetchone()
     if not row:
         conn.execute(
-            "INSERT INTO preferences (user_id, duration_seconds, theme, live_wpm) VALUES (?, 60, 'light', 1)",
-            (user_id,),
+            text("INSERT INTO preferences (user_id, duration_seconds, theme, live_wpm) VALUES (:user_id, 60, 'light', 1)"),
+            {"user_id": user_id},
         )
         conn.commit()
     conn.close()
@@ -150,8 +154,8 @@ def get_preferences(user_id: int):
     ensure_preferences(user_id)
     conn = get_conn()
     prefs = conn.execute(
-        "SELECT duration_seconds, theme, live_wpm FROM preferences WHERE user_id = ?",
-        (user_id,),
+        text("SELECT duration_seconds, theme, live_wpm FROM preferences WHERE user_id = :user_id"),
+        {"user_id": user_id},
     ).fetchone()
     conn.close()
     if not prefs:
@@ -164,7 +168,7 @@ def get_preferences(user_id: int):
 
 def get_top_wpm_and_trophy():
     conn = get_conn()
-    row = conn.execute("SELECT MAX(wpm) as max_wpm FROM typing_sessions").fetchone()
+    row = conn.execute(text("SELECT MAX(wpm) as max_wpm FROM typing_sessions")).fetchone()
     conn.close()
     top_wpm = float(row["max_wpm"]) if row and row["max_wpm"] is not None else None
 
@@ -269,14 +273,14 @@ async def api_training_progress_update(request: Request):
 
     conn = get_conn()
     conn.execute(
-        """
+        text("""
         INSERT INTO training_progress (user_id, mode, level, percent)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(user_id, mode, level) DO UPDATE SET
+        VALUES (:user_id, :mode, :level, :percent)
+        ON CONFLICT (user_id, mode, level) DO UPDATE SET
           percent = excluded.percent,
-          updated_at = datetime('now')
-        """,
-        (user_id, mode, level, percent),
+          updated_at = CURRENT_TIMESTAMP
+        """),
+        {"user_id": user_id, "mode": mode, "level": level, "percent": percent},
     )
     conn.commit()
     conn.close()
@@ -394,7 +398,7 @@ def typing_test(request: Request):
     user_rating = user["rating"] if user and user["rating"] is not None else 1500
     conn = get_conn()
     elo_rankings = conn.execute(
-        "SELECT name, email, rating FROM users ORDER BY rating DESC LIMIT 25"
+        text("SELECT name, email, rating FROM users ORDER BY rating DESC LIMIT 25")
     ).fetchall()
     conn.close()
     if not elo_rankings:
@@ -434,28 +438,28 @@ def leaderboard(request: Request):
         prefs = {"duration_seconds": 60, "theme": "dark", "live_wpm": 1}
         display_name = None
     conn = get_conn()
-    top = conn.execute("""
+    top = conn.execute(text("""
         SELECT u.name as name, u.email as email, ts.wpm as wpm, ts.accuracy as accuracy, ts.created_at as created_at
         FROM typing_sessions ts
         JOIN users u ON u.id = ts.user_id
         ORDER BY ts.wpm DESC
         LIMIT 10
-    """).fetchall()
+    """)).fetchall()
 
-    elo = conn.execute("""
+    elo = conn.execute(text("""
         SELECT name, email, rating
         FROM users
         ORDER BY rating DESC
         LIMIT 25
-    """).fetchall()
+    """)).fetchall()
     if logged_in:
-        mine = conn.execute("""
+        mine = conn.execute(text("""
             SELECT wpm, accuracy, duration_seconds, created_at
             FROM typing_sessions
-            WHERE user_id = ?
+            WHERE user_id = :user_id
             ORDER BY created_at DESC
             LIMIT 50
-        """, (user_id,)).fetchall()
+        """), {"user_id": user_id}).fetchall()
     else:
         mine = []
     conn.close()
@@ -517,15 +521,15 @@ def save_settings(
     live_wpm = 1 if str(live_wpm) in ("1", "true", "True", "on") else 0
 
     conn = get_conn()
-    conn.execute("""
+    conn.execute(text("""
         INSERT INTO preferences (user_id, duration_seconds, theme, live_wpm, updated_at)
-        VALUES (?, ?, ?, ?, datetime('now'))
-        ON CONFLICT(user_id) DO UPDATE SET
+        VALUES (:user_id, :duration_seconds, :theme, :live_wpm, CURRENT_TIMESTAMP)
+        ON CONFLICT (user_id) DO UPDATE SET
             duration_seconds=excluded.duration_seconds,
             theme=excluded.theme,
             live_wpm=excluded.live_wpm,
-            updated_at=datetime('now')
-    """, (user_id, duration_seconds, theme, live_wpm))
+            updated_at=CURRENT_TIMESTAMP
+    """), {"user_id": user_id, "duration_seconds": duration_seconds, "theme": theme, "live_wpm": live_wpm})
     conn.commit()
     conn.close()
 
@@ -569,17 +573,23 @@ async def save_typing_session_json(request: Request):
         prompt_id = 0
 
     conn = get_conn()
-    conn.execute("""
+    conn.execute(text("""
         INSERT INTO typing_sessions (user_id, wpm, accuracy, duration_seconds, prompt_id)
-        VALUES (?, ?, ?, ?, ?)
-    """, (uid, wpm, accuracy, duration_seconds, prompt_id))
+        VALUES (:user_id, :wpm, :accuracy, :duration_seconds, :prompt_id)
+    """), {"user_id": uid, "wpm": wpm, "accuracy": accuracy, "duration_seconds": duration_seconds, "prompt_id": prompt_id})
     # update rating based on performance
-    row = conn.execute("SELECT rating FROM users WHERE id = ?", (uid,)).fetchone()
+    row = conn.execute(
+        text("SELECT rating FROM users WHERE id = :user_id"),
+        {"user_id": uid},
+    ).fetchone()
     current_rating = float(row["rating"]) if row and row["rating"] is not None else 1500.0
     new_rating = update_rating(current_rating, wpm, duration_seconds)
     new_rating_int = int(round(new_rating))
     delta = new_rating_int - int(round(current_rating))
-    conn.execute("UPDATE users SET rating = ? WHERE id = ?", (new_rating_int, uid))
+    conn.execute(
+        text("UPDATE users SET rating = :rating WHERE id = :user_id"),
+        {"rating": new_rating_int, "user_id": uid},
+    )
     conn.commit()
     conn.close()
 
@@ -613,11 +623,15 @@ def signup(
 
     conn = get_conn()
     try:
-        cur = conn.execute(
-            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-            (name, email, pw_hash),
+        conn.execute(
+            text("INSERT INTO users (name, email, password_hash) VALUES (:name, :email, :password_hash)"),
+            {"name": name, "email": email, "password_hash": pw_hash},
         )
-        user_id = cur.lastrowid
+        row = conn.execute(
+            text("SELECT id FROM users WHERE email = :email"),
+            {"email": email},
+        ).fetchone()
+        user_id = row["id"] if row else None
         conn.commit()
     except Exception:
         conn.close()
@@ -647,8 +661,8 @@ def login(
     email = email.strip().lower()
     conn = get_conn()
     row = conn.execute(
-        "SELECT id, password_hash FROM users WHERE email = ?",
-        (email,),
+        text("SELECT id, password_hash FROM users WHERE email = :email"),
+        {"email": email},
     ).fetchone()
     conn.close()
 
@@ -661,7 +675,10 @@ def login(
     # create session
     sid = secrets.token_urlsafe(32)
     conn = get_conn()
-    conn.execute("INSERT INTO auth_sessions (session_id, user_id) VALUES (?, ?)", (sid, row["id"]))
+    conn.execute(
+        text("INSERT INTO auth_sessions (session_id, user_id) VALUES (:session_id, :user_id)"),
+        {"session_id": sid, "user_id": row["id"]},
+    )
     conn.commit()
     conn.close()
 
@@ -681,7 +698,10 @@ def logout(request: Request, next: str = Form(None)):
     sid = request.cookies.get(COOKIE_NAME)
     if sid:
         conn = get_conn()
-        conn.execute("DELETE FROM auth_sessions WHERE session_id = ?", (sid,))
+        conn.execute(
+            text("DELETE FROM auth_sessions WHERE session_id = :session_id"),
+            {"session_id": sid},
+        )
         conn.commit()
         conn.close()
 
